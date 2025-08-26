@@ -374,39 +374,34 @@
 
     <script type="module">
         // =================================================================================
-        // FIREBASE SETUP - UPDATED FOR COLLABORATIVE ENVIRONMENT
+        // FIREBASE SETUP - UNTUK GITHUB PAGES & HOSTING LAINNYA
         // =================================================================================
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, getDocs, setLogLevel, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- DO NOT EDIT THESE LINES ---
-        // const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        // const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        // --------------------------------
-		// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-		const firebaseConfig = {
-		  apiKey: "AIzaSyAlGiSKBW6knMG0rVH6OHjv2hpj4mix6kg",
-		  authDomain: "kartu-nama-digital-5ca5b.firebaseapp.com",
-		  projectId: "kartu-nama-digital-5ca5b",
-		  storageBucket: "kartu-nama-digital-5ca5b.firebasestorage.app",
-		  messagingSenderId: "97704222194",
-		  appId: "1:97704222194:web:7aadb27e03bbebf9875f6b",
-		  measurementId: "G-XN8CL8CQK3"
-		};
+        // ▼▼▼ KONFIGURASI DARI PROYEK FIREBASE ANDA ▼▼▼
+        const firebaseConfig = {
+          apiKey: "AIzaSyAlGiSKBW6knMG0rVH6OHjv2hpj4mix6kg",
+          authDomain: "kartu-nama-digital-5ca5b.firebaseapp.com",
+          projectId: "kartu-nama-digital-5ca5b",
+          storageBucket: "kartu-nama-digital-5ca5b.appspot.com", // FIX: Must end in .appspot.com
+          messagingSenderId: "97704222194",
+          appId: "1:97704222194:web:7aadb27e03bbebf9875f6b",
+          measurementId: "G-XN8CL8CQK3"
+        };
+        // ▲▲▲ KONFIGURASI DARI PROYEK FIREBASE ANDA ▲▲▲
+
         // !!!!! PERUBAHAN PENTING UNTUK DISTRIBUSI !!!!!
         // Ganti nilai di bawah ini dengan ID unik untuk setiap pelanggan/sekolah.
-        // ID HARUS diisi, tidak boleh kosong, dan tidak boleh mengandung spasi atau karakter '/'.
-        // Contoh: 'sma-negeri-1-jakarta', 'smp-budi-luhur', dll.
         const customerId = 'demo1'; 
 
-        // *** FIX: Validasi Customer ID untuk mencegah error saat menyimpan ***
+        // Validasi Customer ID
         if (!customerId || customerId.includes('/') || customerId.includes(' ') || customerId.trim() === '') {
-            const errorMsg = "ID Pelanggan (customerId) tidak valid. Harap periksa kode dan pastikan ID diisi dengan benar tanpa spasi atau karakter '/'.";
+            const errorMsg = "ID Pelanggan (customerId) tidak valid.";
             console.error(errorMsg);
             document.body.innerHTML = `<div style="padding: 2rem; text-align: center; font-family: sans-serif; color: red;"><h1>Error Konfigurasi</h1><p>${errorMsg}</p></div>`;
-            throw new Error(errorMsg); // Stop script execution
+            throw new Error(errorMsg);
         }
 
         // Initialize Firebase
@@ -419,9 +414,9 @@
             db = getFirestore(app);
             setLogLevel('debug'); 
 
-            // Path database sekarang menggunakan customerId untuk memisahkan data
-            studentsCollectionRef = collection(db, `artifacts/${appId}/public/data/customers/${customerId}/students`);
-            settingsDocRef = doc(db, `artifacts/${appId}/public/data/customers/${customerId}/settings/app`);
+            // *** FIX: Corrected database path for standalone deployment ***
+            studentsCollectionRef = collection(db, `customers/${customerId}/students`);
+            settingsDocRef = doc(db, `customers/${customerId}/settings/app`);
 
         } catch (error) {
             console.error("Firebase initialization failed:", error);
@@ -443,7 +438,6 @@
         // UTILITY FUNCTIONS (Toast, Confirm, etc.)
         // =================================================================================
 
-        // Custom notification function to replace alert()
         function showToast(message, type = 'info') {
             const toast = document.getElementById('notification-toast');
             toast.textContent = message;
@@ -453,7 +447,6 @@
             }, 3000);
         }
 
-        // Custom confirm function to replace confirm()
         function showConfirm(title, message) {
             return new Promise((resolve) => {
                 const modal = document.getElementById('confirmModal');
@@ -465,7 +458,6 @@
 
                 const close = (result) => {
                     modal.classList.add('hidden');
-                    // Clone and replace to remove old event listeners
                     okBtn.replaceWith(okBtn.cloneNode(true));
                     cancelBtn.replaceWith(cancelBtn.cloneNode(true));
                     resolve(result);
@@ -893,11 +885,7 @@
                 } else {
                     console.log("User is not signed in. Attempting to sign in...");
                     try {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
+                        await signInAnonymously(auth);
                     } catch (error) {
                         console.error("Authentication failed:", error);
                         showToast("Gagal mengautentikasi.", "error");
@@ -1284,7 +1272,7 @@
             const messageList = document.getElementById('messageList');
             messageList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat pesan...';
             
-            const messagesRef = collection(db, `artifacts/${appId}/public/data/customers/${customerId}/students/${currentStudentId}/messages`);
+            const messagesRef = collection(db, `customers/${customerId}/students/${currentStudentId}/messages`);
             const q = query(messagesRef, orderBy('timestamp', 'asc'));
             
             const querySnapshot = await getDocs(q);
@@ -1322,7 +1310,7 @@
             }
 
             const sender = teacherModeActive ? 'teacher' : 'student';
-            const messagesRef = collection(db, `artifacts/${appId}/public/data/customers/${customerId}/students/${currentStudentId}/messages`);
+            const messagesRef = collection(db, `customers/${customerId}/students/${currentStudentId}/messages`);
             
             try {
                 await addDoc(messagesRef, {
@@ -1415,4 +1403,3 @@
     </script>
 </body>
 </html>
-
