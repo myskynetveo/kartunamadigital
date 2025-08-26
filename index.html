@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kartu Nama Digital Kelas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .modal {
+            backdrop-filter: blur(5px);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-gradient-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-gradient-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .card-gradient-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .card-gradient-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .card-gradient-5 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .card-gradient-6 { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .card-gradient-7 { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); }
+        .card-gradient-8 { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+        .card-gradient-9 { background: linear-gradient(135deg, #fad0c4 0%, #ffd1ff 100%); }
+        .card-gradient-10 { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); }
+        .card-gradient-11 { background: linear-gradient(135deg, #ff8a80 0%, #ffb74d 100%); }
+        .card-gradient-12 { background: linear-gradient(135deg, #81c784 0%, #aed581 100%); }
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .online-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .online { background: #10b981; color: white; }
+        .offline { background: #ef4444; color: white; }
+        .syncing { background: #f59e0b; color: white; }
+        
+        /* Custom Notification Toast */
+        #notification-toast {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            transition: bottom 0.5s ease-in-out;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        #notification-toast.show {
+            bottom: 30px;
+        }
+        #notification-toast.success { background-color: #28a745; }
+        #notification-toast.error { background-color: #dc3545; }
+        #notification-toast.info { background-color: #17a2b8; }
+
+        /* Custom Confirm Modal */
+        #confirmModal {
+            backdrop-filter: blur(5px);
+        }
+        .message-bubble {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Status Koneksi -->
+    <div id="connectionStatus" class="online-indicator online">
+        <i class="fas fa-wifi mr-2"></i>
+        <span id="statusText">🟢 Online & Synced</span>
+    </div>
+
+    <!-- Header -->
+    <div class="gradient-bg text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <!-- Info Sekolah -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 max-w-4xl mx-auto mb-6" id="schoolInfo">
+                <h2 class="text-2xl font-bold mb-3" id="schoolNameDisplay">🏫 SMA Negeri 1 Jakarta</h2>
+                <div class="flex flex-wrap justify-center gap-6 text-sm">
+                    <div class="flex items-center" id="schoolAddressDisplay">
+                        <i class="fas fa-map-marker-alt mr-2"></i>
+                        <span>Jl. Pendidikan No. 123, Jakarta Pusat</span>
+                    </div>
+                    <div class="flex items-center" id="schoolPhoneDisplay">
+                        <i class="fas fa-phone mr-2"></i>
+                        <span>(021) 1234-5678</span>
+                    </div>
+                    <div class="flex items-center" id="schoolEmailDisplay">
+                        <i class="fas fa-envelope mr-2"></i>
+                        <span>info@sman1jakarta.sch.id</span>
+                    </div>
+                </div>
+                <div class="text-center mt-3 text-sm opacity-80" id="classTeacherDisplay">
+                    <!-- Wali kelas akan ditampilkan di sini -->
+                </div>
+            </div>
+            
+            <h1 class="text-4xl font-bold mb-2" id="appTitleDisplay">📚 Kartu Nama Digital</h1>
+            <p class="text-xl opacity-90 mb-4" id="classInfoDisplay">Kelas XII - Tahun Ajaran 2024/2025</p>
+            
+            <!-- Tombol Kontrol -->
+            <div class="flex justify-center gap-3 flex-wrap">
+                <!-- Container for admin buttons, hidden by default -->
+                <div id="adminButtons" class="hidden flex-wrap gap-3 sm:flex">
+                    <button onclick="forceSync()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm">
+                        <i class="fas fa-sync mr-2"></i>Force Sync
+                    </button>
+                    <button onclick="exportData()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm">
+                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                    </button>
+                    <button onclick="openSettingsModal()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm">
+                        <i class="fas fa-cog mr-2"></i>Pengaturan
+                    </button>
+                </div>
+                <!-- Tombol Mode Guru -->
+                <button id="teacherModeBtn" onclick="toggleTeacherMode()" class="bg-yellow-400/20 hover:bg-yellow-400/30 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm">
+                    <i class="fas fa-user-shield mr-2"></i>Mode Guru
+                </button>
+            </div>
+            
+            <!-- Status Realtime -->
+            <div class="mt-3 text-sm opacity-80" id="realtimeStatus">
+                <span id="lastUpdateDisplay">Terakhir update: Baru saja</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid Kartu Siswa -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" id="studentGrid">
+            <!-- Kartu siswa akan diisi oleh JavaScript -->
+        </div>
+    </div>
+
+    <!-- Modal Detail Kartu -->
+    <div id="studentModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <!-- Header Modal -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Detail Kartu Nama</h2>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <!-- Form -->
+                <form id="studentForm" class="space-y-4">
+                    <!-- Foto Profil -->
+                    <div class="text-center mb-6">
+                        <div class="relative inline-block">
+                            <img id="profileImage" src="" alt="Foto Profil" class="w-24 h-24 rounded-full object-cover border-4 border-blue-200 mx-auto">
+                            <label for="photoInput" class="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-2 cursor-pointer hover:bg-blue-600">
+                                <i class="fas fa-camera text-sm"></i>
+                            </label>
+                            <input type="file" id="photoInput" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+                        </div>
+                    </div>
+
+                    <!-- Fields... -->
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-user text-blue-500 mr-2"></i>Nama Lengkap</label><input type="text" id="fullName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Masukkan nama lengkap"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-map-marker-alt text-red-500 mr-2"></i>Alamat Pribadi</label><textarea id="address" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Masukkan alamat lengkap"></textarea></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-graduation-cap text-green-500 mr-2"></i>Riwayat Pendidikan</label><div class="space-y-2"><input type="text" id="elementary" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="SD/MI"><input type="text" id="junior" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="SMP/MTs"><input type="text" id="senior" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="SMA/SMK"></div></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-heart text-pink-500 mr-2"></i>Hobi</label><input type="text" id="hobby" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: Membaca, Olahraga, Musik"></div>
+                    <div><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-star text-yellow-500 mr-2"></i>Cita-cita</label><input type="text" id="ambition" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Contoh: Dokter, Programmer, Pengusaha"></div>
+                    
+                    <!-- Parent Info Fields -->
+                    <div class="border-t pt-4 mt-4">
+                        <h3 class="text-md font-semibold text-gray-600 mb-3">Informasi Orang Tua</h3>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-user-tie text-gray-500 mr-2"></i>Nama Ayah</label>
+                            <input type="text" id="fatherName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Masukkan nama ayah">
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-female text-gray-500 mr-2"></i>Nama Ibu</label>
+                            <input type="text" id="motherName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Masukkan nama ibu">
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-phone-alt text-gray-500 mr-2"></i>Tlp/Whatsapp Orang Tua</label>
+                            <input type="tel" id="parentPhone" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="08xxxxxxxxxx">
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mt-4">
+                         <h3 class="text-md font-semibold text-gray-600 mb-3">Kontak & Media Sosial Siswa</h3>
+                        <div><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fab fa-whatsapp text-green-500 mr-2"></i>No. WhatsApp</label><input type="tel" id="whatsapp" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="08xxxxxxxxxx"></div>
+                        <div class="mt-4"><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fab fa-instagram text-pink-500 mr-2"></i>Instagram</label><input type="text" id="instagram" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="@username"></div>
+                        <div class="mt-4"><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fab fa-facebook text-blue-600 mr-2"></i>Facebook</label><input type="text" id="facebook" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Nama Facebook"></div>
+                        <div class="mt-4"><label class="block text-sm font-medium text-gray-700 mb-2"><i class="fab fa-tiktok text-black mr-2"></i>TikTok</label><input type="text" id="tiktok" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="@username"></div>
+                    </div>
+                    
+                    <!-- Password Fields -->
+                    <div class="border-t pt-4 mt-4" id="passwordSection">
+                         <h3 class="text-md font-semibold text-gray-600 mb-3">Buat Password</h3>
+                         <p class="text-xs text-gray-500 mb-2" id="password-help-text">Buat password untuk melindungi kartumu. Kosongkan jika tidak ingin mengubah.</p>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-key text-gray-500 mr-2"></i>Password</label>
+                            <input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Masukkan password baru">
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2"><i class="fas fa-key text-gray-500 mr-2"></i>Konfirmasi Password</label>
+                            <input type="password" id="confirmPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Ketik ulang password">
+                        </div>
+                    </div>
+
+                    <!-- Tombol Aksi -->
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" onclick="saveStudent()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 font-medium"><i class="fas fa-save mr-2"></i>Simpan</button>
+                        <button type="button" onclick="deleteStudent()" class="bg-red-500 text-white px-4 py-3 rounded-lg hover:bg-red-600 font-medium"><i class="fas fa-trash mr-2"></i>Hapus</button>
+                        <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-400 font-medium">Batal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pengaturan -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <!-- Header Modal -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">⚙️ Pengaturan Aplikasi</h2>
+                    <button onclick="closeSettingsModal()" class="text-gray-500 hover:text-gray-700 text-2xl"><i class="fas fa-times"></i></button>
+                </div>
+
+                <!-- Form Pengaturan -->
+                <form id="settingsForm" class="space-y-6">
+                    <!-- Master Password -->
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold text-yellow-800 mb-4 flex items-center"><i class="fas fa-user-shield mr-2"></i>Password Master Guru</h3>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Password Master</label>
+                            <input type="password" id="masterPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Password untuk membuka semua kartu">
+                            <p class="text-xs text-gray-500 mt-1">Kosongkan jika tidak ingin mengubah.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-4 rounded-lg"><h3 class="text-lg font-semibold text-blue-800 mb-4 flex items-center"><i class="fas fa-school mr-2"></i>Informasi Sekolah</h3><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Nama Sekolah</label><input type="text" id="schoolName" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: SMA Negeri 1 Jakarta"></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Alamat Sekolah</label><input type="text" id="schoolAddress" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: Jl. Pendidikan No. 123, Jakarta Pusat"></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Nomor Telepon</label><input type="tel" id="schoolPhone" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: (021) 1234-5678"></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Email Sekolah</label><input type="email" id="schoolEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: info@sekolah.sch.id"></div></div></div>
+                    <div class="bg-green-50 p-4 rounded-lg"><h3 class="text-lg font-semibold text-green-800 mb-4 flex items-center"><i class="fas fa-users mr-2"></i>Informasi Kelas</h3><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Nama Kelas</label><input type="text" id="className" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: Kelas XII"></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Tahun Ajaran</label><input type="text" id="academicYear" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: 2024/2025"></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Wali Kelas</label><input type="text" id="classTeacher" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: Bapak/Ibu Guru"></div></div></div>
+                    <div class="bg-purple-50 p-4 rounded-lg"><h3 class="text-lg font-semibold text-purple-800 mb-4 flex items-center"><i class="fas fa-palette mr-2"></i>Pengaturan Tampilan</h3><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Judul Aplikasi</label><input type="text" id="appTitle" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: Kartu Nama Digital"></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Emoji Header</label><input type="text" id="headerEmoji" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: 📚" maxlength="5"></div><div><label class="block text-sm font-medium text-gray-700 mb-2">Jumlah Siswa</label><select id="studentCount" class="w-full px-4 py-2 border border-gray-300 rounded-lg"><option value="24">24 Siswa (4x6)</option><option value="30">30 Siswa (5x6)</option><option value="36" selected>36 Siswa (6x6)</option><option value="40">40 Siswa (8x5)</option></select></div></div></div>
+
+                    <!-- Tombol Aksi -->
+                    <div class="flex flex-col gap-3 pt-4">
+                        <button type="button" onclick="saveSettings()" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 font-medium">
+                            <i class="fas fa-save mr-2"></i>Simpan Pengaturan
+                        </button>
+                        <div class="flex gap-3">
+                             <button type="button" onclick="resetStudentData()" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium text-sm">
+                                <i class="fas fa-users-slash mr-2"></i>Reset Data Siswa
+                            </button>
+                            <button type="button" onclick="resetSettings()" class="flex-1 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 font-medium text-sm">
+                                <i class="fas fa-undo mr-2"></i>Reset Pengaturan
+                            </button>
+                        </div>
+                         <button type="button" onclick="closeSettingsModal()" class="w-full bg-gray-300 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-400 font-medium">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tampilan Kartu -->
+    <div id="viewModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full">
+            <div class="p-6">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Kartu Nama Digital</h2>
+                    <button onclick="closeViewModal()" class="text-gray-500 hover:text-gray-700 text-2xl"><i class="fas fa-times"></i></button>
+                </div>
+                <!-- Konten Kartu -->
+                <div id="cardContent" class="text-center"></div>
+                <!-- Tombol Aksi Kartu -->
+                <div id="cardActionButtons" class="mt-6 space-y-2">
+                    <!-- Buttons will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Password -->
+    <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <h3 id="passwordTitle" class="text-lg font-bold text-gray-800 mb-4">Masukkan Password</h3>
+            <input type="password" id="passwordInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" placeholder="Password...">
+            <div class="flex justify-end gap-3">
+                <button onclick="cancelPasswordModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">Batal</button>
+                <button onclick="checkPassword()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Buka</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Master Password -->
+    <div id="masterPasswordModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Akses Mode Guru</h3>
+            <p class="text-sm text-gray-600 mb-4">Masukkan Password Master untuk melanjutkan.</p>
+            <input type="password" id="masterPasswordInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4" placeholder="Password Master...">
+            <div class="flex justify-end gap-3">
+                <button onclick="closeMasterPasswordModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">Batal</button>
+                <button onclick="checkMasterPassword()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Masuk</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pesan -->
+    <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b">
+                <div class="flex justify-between items-center">
+                    <h2 id="messageModalTitle" class="text-2xl font-bold text-gray-800">Pesan</h2>
+                    <button onclick="closeMessageModal()" class="text-gray-500 hover:text-gray-700 text-2xl"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div id="messageList" class="p-6 space-y-4 overflow-y-auto flex-grow">
+                <!-- Messages will be injected here -->
+            </div>
+            <div id="messageInputArea" class="p-6 border-t">
+                <textarea id="messageText" class="w-full p-2 border rounded-lg" rows="3" placeholder="Ketik pesan..."></textarea>
+                <button onclick="sendMessage()" class="w-full mt-2 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600">
+                    <i class="fas fa-paper-plane mr-2"></i>Kirim
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification Toast -->
+    <div id="notification-toast"></div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <h3 id="confirmTitle" class="text-lg font-bold text-gray-800 mb-4">Konfirmasi</h3>
+            <p id="confirmMessage" class="text-gray-600 mb-6">Apakah Anda yakin?</p>
+            <div class="flex justify-end gap-3">
+                <button id="confirmCancel" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400">Batal</button>
+                <button id="confirmOk" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // =================================================================================
+        // FIREBASE SETUP - UPDATED FOR COLLABORATIVE ENVIRONMENT
+        // =================================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, getDocs, setLogLevel, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- DO NOT EDIT THESE LINES ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --------------------------------
+
+        // !!!!! PERUBAHAN PENTING UNTUK DISTRIBUSI !!!!!
+        // Ganti nilai di bawah ini dengan ID unik untuk setiap pelanggan/sekolah.
+        // ID HARUS diisi, tidak boleh kosong, dan tidak boleh mengandung spasi atau karakter '/'.
+        // Contoh: 'sma-negeri-1-jakarta', 'smp-budi-luhur', dll.
+        const customerId = 'demo1'; 
+
+        // *** FIX: Validasi Customer ID untuk mencegah error saat menyimpan ***
+        if (!customerId || customerId.includes('/') || customerId.includes(' ') || customerId.trim() === '') {
+            const errorMsg = "ID Pelanggan (customerId) tidak valid. Harap periksa kode dan pastikan ID diisi dengan benar tanpa spasi atau karakter '/'.";
+            console.error(errorMsg);
+            document.body.innerHTML = `<div style="padding: 2rem; text-align: center; font-family: sans-serif; color: red;"><h1>Error Konfigurasi</h1><p>${errorMsg}</p></div>`;
+            throw new Error(errorMsg); // Stop script execution
+        }
+
+        // Initialize Firebase
+        let app, auth, db, userId;
+        let studentsCollectionRef, settingsDocRef;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            setLogLevel('debug'); 
+
+            // Path database sekarang menggunakan customerId untuk memisahkan data
+            studentsCollectionRef = collection(db, `artifacts/${appId}/public/data/customers/${customerId}/students`);
+            settingsDocRef = doc(db, `artifacts/${appId}/public/data/customers/${customerId}/settings/app`);
+
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            showToast("Gagal menginisialisasi database.", "error");
+        }
+        
+        // =================================================================================
+        // GLOBAL VARIABLES & STATE MANAGEMENT
+        // =================================================================================
+        let students = {};
+        let currentStudentId = null;
+        let appSettings = getDefaultSettings();
+        let unsubscribeStudents = null;
+        let unsubscribeSettings = null;
+        let isOnline = navigator.onLine;
+        let teacherModeActive = false;
+        
+        // =================================================================================
+        // UTILITY FUNCTIONS (Toast, Confirm, etc.)
+        // =================================================================================
+
+        // Custom notification function to replace alert()
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('notification-toast');
+            toast.textContent = message;
+            toast.className = `show ${type}`;
+            setTimeout(() => {
+                toast.className = toast.className.replace('show', '');
+            }, 3000);
+        }
+
+        // Custom confirm function to replace confirm()
+        function showConfirm(title, message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmModal');
+                document.getElementById('confirmTitle').textContent = title;
+                document.getElementById('confirmMessage').textContent = message;
+                
+                const okBtn = document.getElementById('confirmOk');
+                const cancelBtn = document.getElementById('confirmCancel');
+
+                const close = (result) => {
+                    modal.classList.add('hidden');
+                    // Clone and replace to remove old event listeners
+                    okBtn.replaceWith(okBtn.cloneNode(true));
+                    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+                    resolve(result);
+                };
+
+                document.getElementById('confirmOk').onclick = () => close(true);
+                document.getElementById('confirmCancel').onclick = () => close(false);
+
+                modal.classList.remove('hidden');
+            });
+        }
+        
+        // =================================================================================
+        // CORE APPLICATION LOGIC
+        // =================================================================================
+
+        function getDefaultSettings() {
+            return {
+                schoolName: 'SMA Negeri 1 Jakarta', schoolAddress: 'Jl. Pendidikan No. 123, Jakarta Pusat',
+                schoolPhone: '(021) 1234-5678', schoolEmail: 'info@sman1jakarta.sch.id',
+                className: 'Kelas XII', academicYear: '2024/2025', classTeacher: '',
+                appTitle: 'Kartu Nama Digital', headerEmoji: '📚', studentCount: 36,
+                masterPassword: ''
+            };
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            const textEl = document.getElementById('statusText');
+            statusEl.className = `online-indicator ${status}`;
+            textEl.innerHTML = message;
+        }
+
+        window.addEventListener('online', () => {
+            isOnline = true;
+            updateConnectionStatus('online', '🟢 Online & Synced');
+            setupRealtimeListeners();
+        });
+
+        window.addEventListener('offline', () => {
+            isOnline = false;
+            updateConnectionStatus('offline', '🔴 Offline Mode');
+        });
+
+        async function setupRealtimeListeners() {
+            if (!db || !isOnline || !userId || !studentsCollectionRef || !settingsDocRef) {
+                console.warn("Realtime listeners setup skipped: Missing Firebase refs or offline.");
+                return;
+            };
+            
+            try {
+                // Listener for students data
+                if (unsubscribeStudents) unsubscribeStudents();
+                unsubscribeStudents = onSnapshot(studentsCollectionRef, (snapshot) => {
+                    updateConnectionStatus('syncing', '🟡 Syncing...');
+                    
+                    snapshot.docChanges().forEach((change) => {
+                        const studentId = change.doc.id;
+                        const studentData = change.doc.data();
+                        if (change.type === 'added' || change.type === 'modified') {
+                            students[studentId] = studentData;
+                            updateStudentCard(studentId, studentData);
+                        } else if (change.type === 'removed') {
+                            delete students[studentId];
+                            updateStudentCard(studentId, null);
+                        }
+                    });
+                    
+                    localStorage.setItem('studentsData', JSON.stringify(students));
+                    setTimeout(() => {
+                        updateConnectionStatus('online', '🟢 Online & Synced');
+                        updateLastUpdateDisplay();
+                    }, 500);
+                }, (error) => {
+                    console.error("Error in students listener:", error);
+                });
+
+                // Listener for settings
+                if (unsubscribeSettings) unsubscribeSettings();
+                unsubscribeSettings = onSnapshot(settingsDocRef, (doc) => {
+                    if (doc.exists()) {
+                        const newSettings = doc.data();
+                        const currentCount = appSettings.studentCount;
+                        appSettings = { ...getDefaultSettings(), ...newSettings };
+                        localStorage.setItem('appSettings', JSON.stringify(appSettings));
+                        updateHeaderDisplay();
+                        
+                        if (currentCount !== appSettings.studentCount) {
+                            initializeStudentGrid();
+                        }
+                    }
+                }, (error) => {
+                    console.error("Error in settings listener:", error);
+                });
+                
+                console.log('✅ Realtime listeners setup successfully');
+            } catch (error) {
+                console.error('❌ Error setting up realtime listeners:', error);
+                updateConnectionStatus('offline', '⚠️ Connection Error');
+            }
+        }
+
+        function updateStudentCard(studentId, studentData) {
+            const card = document.querySelector(`[data-student-id="${studentId}"]`);
+            if (!card) return;
+            
+            const hasData = studentData && studentData.fullName && studentData.fullName.trim() !== '';
+            
+            const photoContainer = card.querySelector('.photo-container');
+            const nameElement = card.querySelector('.student-name');
+            const statusElement = card.querySelector('.student-status');
+            const indicatorElement = card.querySelector('.status-indicator');
+            const messageIcon = card.querySelector('.message-indicator');
+            const studentMessageIcon = card.querySelector('.student-message-indicator');
+            
+            if (photoContainer) {
+                photoContainer.innerHTML = studentData && studentData.photo ? 
+                    `<img src="${studentData.photo}" alt="Foto" class="w-full h-full object-cover">` :
+                    `<i class="fas fa-user text-2xl text-white/80"></i>`;
+            }
+            if (nameElement) {
+                nameElement.textContent = hasData ? studentData.fullName : `Siswa ${studentId}`;
+            }
+            if (statusElement) {
+                statusElement.textContent = hasData ? 'Klik untuk lihat' : 'Klik untuk isi data';
+            }
+            if (indicatorElement) {
+                indicatorElement.className = hasData ? 
+                    'inline-block w-2 h-2 bg-white rounded-full shadow-lg animate-pulse' :
+                    'inline-block w-2 h-2 bg-white/50 rounded-full';
+            }
+            if (messageIcon) {
+                messageIcon.classList.toggle('hidden', !studentData?.hasUnreadMessage);
+            }
+            if (studentMessageIcon) {
+                studentMessageIcon.classList.toggle('hidden', !studentData?.hasUnreadMessageFromTeacher);
+            }
+        }
+
+        async function saveStudentToFirestore(studentId, dataToSave) {
+            if (!db || !isOnline) throw new Error('No database connection');
+            try {
+                await setDoc(doc(studentsCollectionRef, studentId), dataToSave, { merge: true });
+                console.log(`✅ Student data ${studentId} saved to Firestore`);
+                return true;
+            } catch (error) {
+                console.error(`❌ Error saving student data ${studentId}:`, error);
+                throw error;
+            }
+        }
+
+        async function saveSettingsToFirestore(settingsData) {
+            if (!db || !isOnline) throw new Error('No database connection');
+            try {
+                await setDoc(settingsDocRef, {
+                    ...settingsData,
+                    lastUpdated: new Date().toISOString()
+                });
+                console.log('✅ Settings saved to Firestore');
+                return true;
+            } catch (error) {
+                console.error('❌ Error saving settings:', error);
+                throw error;
+            }
+        }
+
+        async function deleteStudentFromFirestore(studentId) {
+            if (!db || !isOnline) throw new Error('No database connection');
+            try {
+                await deleteDoc(doc(studentsCollectionRef, studentId));
+                console.log(`✅ Student data ${studentId} deleted from Firestore`);
+                return true;
+            } catch (error) {
+                console.error(`❌ Error deleting student data ${studentId}:`, error);
+                throw error;
+            }
+        }
+        
+        window.saveStudent = async function() {
+            if (currentStudentId === null) {
+                console.error("saveStudent called with null currentStudentId. Aborting.");
+                showToast('Terjadi kesalahan, ID siswa tidak ditemukan.', 'error');
+                return;
+            }
+
+            const newDataFromForm = {
+                fullName: document.getElementById('fullName').value,
+                address: document.getElementById('address').value,
+                elementary: document.getElementById('elementary').value,
+                junior: document.getElementById('junior').value,
+                senior: document.getElementById('senior').value,
+                hobby: document.getElementById('hobby').value,
+                ambition: document.getElementById('ambition').value,
+                fatherName: document.getElementById('fatherName').value,
+                motherName: document.getElementById('motherName').value,
+                parentPhone: document.getElementById('parentPhone').value,
+                whatsapp: document.getElementById('whatsapp').value,
+                instagram: document.getElementById('instagram').value,
+                facebook: document.getElementById('facebook').value,
+                tiktok: document.getElementById('tiktok').value,
+                photo: document.getElementById('profileImage').src
+            };
+
+            if (!newDataFromForm.fullName.trim()) {
+                showToast('Nama lengkap wajib diisi!', 'error');
+                return;
+            }
+
+            const existingStudent = students[currentStudentId] || {};
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            let finalPassword = existingStudent.password;
+
+            if (password) {
+                if (password !== confirmPassword) {
+                    showToast('Password dan konfirmasi tidak cocok!', 'error');
+                    return;
+                }
+                finalPassword = password;
+            } else if (!existingStudent.password) {
+                showToast('Password wajib diisi untuk siswa baru!', 'error');
+                return;
+            }
+
+            const dataToSave = { ...existingStudent, ...newDataFromForm, password: finalPassword };
+
+            const saveBtn = document.querySelector('button[onclick="saveStudent()"]');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
+            saveBtn.disabled = true;
+
+            try {
+                if (isOnline) {
+                    await saveStudentToFirestore(currentStudentId.toString(), dataToSave);
+                }
+                students[currentStudentId] = dataToSave;
+                localStorage.setItem('studentsData', JSON.stringify(students));
+                updateStudentCard(currentStudentId, dataToSave);
+                
+                closeModal();
+                showToast('✅ Data berhasil disimpan!', 'success');
+            } catch (error) {
+                console.error('Error saving student:', error);
+                students[currentStudentId] = dataToSave;
+                localStorage.setItem('studentsData', JSON.stringify(students));
+                updateStudentCard(currentStudentId, dataToSave);
+                closeModal();
+                showToast('⚠️ Data disimpan lokal. Gagal sinkronisasi.', 'error');
+            } finally {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+
+        window.deleteStudent = async function() {
+            if (!currentStudentId || !students[currentStudentId]) {
+                showToast('Tidak ada data untuk dihapus!', 'error');
+                return;
+            }
+            
+            const confirmed = await showConfirm('Hapus Data', 'Apakah Anda yakin ingin menghapus data siswa ini?');
+            if (!confirmed) return;
+            
+            const deleteBtn = document.querySelector('button[onclick="deleteStudent()"]');
+            const originalText = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus...';
+            deleteBtn.disabled = true;
+            
+            try {
+                if (isOnline) {
+                    await deleteStudentFromFirestore(currentStudentId.toString());
+                } else {
+                    delete students[currentStudentId];
+                    localStorage.setItem('studentsData', JSON.stringify(students));
+                    updateStudentCard(currentStudentId, null);
+                }
+                
+                closeModal();
+                showToast('✅ Data berhasil dihapus!', 'success');
+            } catch (error) {
+                console.error('Error deleting student:', error);
+                delete students[currentStudentId];
+                localStorage.setItem('studentsData', JSON.stringify(students));
+                updateStudentCard(currentStudentId, null);
+                closeModal();
+                showToast('⚠️ Data dihapus lokal. Gagal sinkronisasi.', 'error');
+            } finally {
+                deleteBtn.innerHTML = originalText;
+                deleteBtn.disabled = false;
+            }
+        }
+
+        window.saveSettings = async function() {
+            const saveBtn = document.querySelector('button[onclick="saveSettings()"]');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menyimpan...';
+            saveBtn.disabled = true;
+            
+            const newSettings = {
+                schoolName: document.getElementById('schoolName').value, schoolAddress: document.getElementById('schoolAddress').value,
+                schoolPhone: document.getElementById('schoolPhone').value, schoolEmail: document.getElementById('schoolEmail').value,
+                className: document.getElementById('className').value, academicYear: document.getElementById('academicYear').value,
+                classTeacher: document.getElementById('classTeacher').value, appTitle: document.getElementById('appTitle').value,
+                headerEmoji: document.getElementById('headerEmoji').value, studentCount: parseInt(document.getElementById('studentCount').value),
+                masterPassword: document.getElementById('masterPassword').value || appSettings.masterPassword
+            };
+            
+            try {
+                if (isOnline) {
+                    await saveSettingsToFirestore(newSettings);
+                }
+                appSettings = newSettings;
+                localStorage.setItem('appSettings', JSON.stringify(appSettings));
+                
+                updateHeaderDisplay();
+                initializeStudentGrid();
+                
+                closeSettingsModal();
+                showToast('✅ Pengaturan berhasil disimpan!', 'success');
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showToast('⚠️ Gagal menyimpan pengaturan. ' + error.message, 'error');
+            } finally {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+
+        window.resetSettings = async function() {
+            const confirmed = await showConfirm('Reset Pengaturan', 'Apakah Anda yakin ingin mereset semua pengaturan ke default?');
+            if (confirmed) {
+                appSettings = getDefaultSettings();
+                localStorage.setItem('appSettings', JSON.stringify(appSettings));
+                
+                openSettingsModal(); // Re-open to show default values
+                updateHeaderDisplay();
+                initializeStudentGrid();
+                
+                if (isOnline) {
+                    saveSettingsToFirestore(appSettings).catch(console.error);
+                }
+                
+                showToast('🔄 Pengaturan berhasil direset!', 'info');
+            }
+        }
+
+        // *** FIX: Added client-side image compression to prevent data size errors ***
+        window.handlePhotoUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit before compression
+                showToast('⚠️ Ukuran file terlalu besar! Maksimal 5MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 400;
+                    const MAX_HEIGHT = 400;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Get compressed JPEG data URL (quality: 70%)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('profileImage').src = dataUrl;
+                }
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Other functions (unchanged logic, just made global for HTML onclick)
+        
+        window.editFromView = function() { /* ... unchanged ... */ };
+        window.closeModal = function() { /* ... unchanged ... */ };
+        window.closeViewModal = function() { /* ... unchanged ... */ };
+        
+        // Make functions globally accessible
+        Object.assign(window, {
+            updateHeaderDisplay, updateLastUpdateDisplay,
+        });
+
+        // =================================================================================
+        // INITIALIZATION
+        // =================================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Initializing Digital Business Card App...');
+            updateConnectionStatus(isOnline ? 'syncing' : 'offline', isOnline ? '🟡 Connecting...' : '🔴 Offline Mode');
+
+            // Load local data first for a fast UI response
+            const localStudents = localStorage.getItem('studentsData');
+            const localSettings = localStorage.getItem('appSettings');
+            if (localStudents) students = JSON.parse(localStudents);
+            if (localSettings) appSettings = JSON.parse(localSettings);
+            
+            updateHeaderDisplay();
+            initializeStudentGrid();
+
+            // Authenticate and then fetch data
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    console.log(`Authenticated as user: ${userId}`);
+                    await setupRealtimeListeners();
+                } else {
+                    console.log("User is not signed in. Attempting to sign in...");
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Authentication failed:", error);
+                        showToast("Gagal mengautentikasi.", "error");
+                    }
+                }
+            });
+        });
+        
+        // Re-exposing functions that were inside the module but are called by HTML onclick
+        
+        window.forceSync = async function() {
+            if (!teacherModeActive) { showToast('Fitur ini hanya untuk guru.', 'error'); return; }
+            const btn = document.querySelector('button[onclick="forceSync()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Syncing...';
+            btn.disabled = true;
+            
+            try {
+                await setupRealtimeListeners(); // Re-establish listeners
+                showToast('✅ Sinkronisasi berhasil!', 'success');
+            } catch (error) {
+                showToast('❌ Sinkronisasi gagal: ' + error.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        window.exportData = function() {
+            if (!teacherModeActive) { showToast('Fitur ini hanya untuk guru.', 'error'); return; }
+            const btn = document.querySelector('button[onclick="exportData()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Membuat PDF...';
+            btn.disabled = true;
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.text(appSettings.schoolName || 'Nama Sekolah', 105, 20, { align: 'center' });
+                
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'normal');
+                doc.text(appSettings.schoolAddress || 'Alamat Sekolah', 105, 30, { align: 'center' });
+                doc.text(`Telp: ${appSettings.schoolPhone || '-'} | Email: ${appSettings.schoolEmail || '-'}`, 105, 38, { align: 'center' });
+                
+                doc.setLineWidth(0.5);
+                doc.line(20, 45, 190, 45);
+                
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text('DATA SISWA KARTU NAMA DIGITAL', 105, 55, { align: 'center' });
+                
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'normal');
+                doc.text(`${appSettings.className || 'Kelas'} - Tahun Ajaran ${appSettings.academicYear || '2024/2025'}`, 105, 63, { align: 'center' });
+                
+                if (appSettings.classTeacher) {
+                    doc.text(`Wali Kelas: ${appSettings.classTeacher}`, 105, 71, { align: 'center' });
+                }
+                
+                const tableData = [];
+                const maxStudents = appSettings.studentCount || 36;
+                
+                for (let i = 1; i <= maxStudents; i++) {
+                    const student = students[i] || {};
+                    const hasData = student.fullName && student.fullName.trim() !== '';
+                    if (hasData) {
+                        const socialMedia = [`WA: ${student.whatsapp||'-'}`, `IG: ${student.instagram||'-'}`, `FB: ${student.facebook||'-'}`, `TT: ${student.tiktok||'-'}`].join('\n');
+                        const parentInfo = [`Ayah: ${student.fatherName||'-'}`, `Ibu: ${student.motherName||'-'}`, `Telp: ${student.parentPhone||'-'}`].join('\n');
+                        tableData.push([i.toString(), student.fullName, parentInfo, student.hobby||'-', student.ambition || '-', socialMedia]);
+                    } else {
+                         tableData.push([i.toString(), '(Belum diisi)', '-', '-', '-', '-']);
+                    }
+                }
+                
+                doc.autoTable({
+                    head: [['No', 'Nama Lengkap', 'Data Orang Tua', 'Hobi', 'Cita-cita', 'Kontak & Sosmed']],
+                    body: tableData,
+                    startY: appSettings.classTeacher ? 80 : 75,
+                    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                    headStyles: { fillColor: [66, 139, 202], textColor: 255, fontStyle: 'bold', halign: 'center' },
+                    columnStyles: { 0: { halign: 'center', cellWidth: 10 } },
+                });
+                
+                const finalY = doc.lastAutoTable.finalY || 200;
+                doc.setFontSize(10);
+                doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 20, finalY + 15);
+                
+                const fileName = `Data-Siswa-${appSettings.className?.replace(/\s+/g, '-') || 'Kelas'}.pdf`;
+                doc.save(fileName);
+                
+                showToast('📄 Data berhasil diekspor ke PDF!', 'success');
+            } catch (error) {
+                console.error('Error creating PDF:', error);
+                showToast('❌ Gagal membuat PDF: ' + error.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+        
+        window.closeSettingsModal = function() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        };
+
+        window.initializeStudentGrid = function() {
+            const grid = document.getElementById('studentGrid');
+            grid.innerHTML = '';
+            const maxStudents = appSettings.studentCount || 36;
+            for (let i = 1; i <= maxStudents; i++) {
+                const student = students[i] || {};
+                const hasData = student.fullName && student.fullName.trim() !== '';
+                const gradientClass = `card-gradient-${((i - 1) % 12) + 1}`;
+                const card = document.createElement('div');
+                card.className = `${gradientClass} rounded-xl shadow-lg card-hover cursor-pointer border border-white/20 relative overflow-hidden`;
+                card.setAttribute('data-student-id', i);
+                card.onclick = () => openStudent(i);
+                card.innerHTML = `
+                    <div class="absolute top-2 right-2 text-white message-indicator hidden">
+                        <i class="fas fa-envelope fa-lg"></i>
+                    </div>
+                    <div class="absolute top-2 left-2 text-yellow-300 student-message-indicator hidden">
+                        <i class="fas fa-reply fa-lg"></i>
+                    </div>
+                    <div class="absolute inset-0 shimmer opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+                    <div class="p-4 text-center relative z-10">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full overflow-hidden bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 photo-container">
+                            ${student.photo ? `<img src="${student.photo}" alt="Foto" class="w-full h-full object-cover">` : `<i class="fas fa-user text-2xl text-white/80"></i>`}
+                        </div>
+                        <h3 class="font-bold text-white text-sm mb-1 drop-shadow-sm student-name">${hasData ? student.fullName : `Siswa ${i}`}</h3>
+                        <p class="text-xs text-white/80 drop-shadow-sm student-status">${hasData ? 'Klik untuk lihat' : 'Klik untuk isi data'}</p>
+                        <div class="mt-2"><span class="status-indicator ${hasData ? 'inline-block w-2 h-2 bg-white rounded-full shadow-lg animate-pulse' : 'inline-block w-2 h-2 bg-white/50 rounded-full'}"></span></div>
+                    </div>`;
+                grid.appendChild(card);
+            }
+        };
+
+        window.openStudent = function(id) {
+            currentStudentId = id;
+            const student = students[id] || {};
+
+            if (teacherModeActive) {
+                if (student.fullName) {
+                    showStudentCard(student);
+                } else {
+                    openEditModal(student);
+                }
+                return;
+            }
+
+            // If not teacher mode, always ask for password
+            openPasswordModal();
+        };
+
+        window.showStudentCard = function(student) {
+            const content = document.getElementById('cardContent');
+            const actionButtons = document.getElementById('cardActionButtons');
+            
+            content.innerHTML = `
+                <div class="mb-6">
+                    <div class="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                        ${student.photo ? `<img src="${student.photo}" alt="Foto" class="w-full h-full object-cover">` : `<i class="fas fa-user text-3xl text-gray-400"></i>`}
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">${student.fullName || 'Nama belum diisi'}</h3>
+                </div>
+                <div class="space-y-3 text-left">
+                    ${student.address ? `<div class="flex items-start"><i class="fas fa-map-marker-alt text-red-500 mr-3 mt-1"></i><div><span class="font-medium text-gray-800">Alamat:</span><div class="text-gray-700">${student.address}</div></div></div>` : ''}
+                    ${(student.elementary || student.junior || student.senior) ? `<div><div class="flex items-center mb-2"><i class="fas fa-graduation-cap text-green-500 mr-3"></i><span class="font-medium text-gray-800">Pendidikan:</span></div><div class="ml-6 space-y-1 text-sm text-gray-600">${student.elementary ? `<div>• SD/MI: ${student.elementary}</div>` : ''}${student.junior ? `<div>• SMP/MTs: ${student.junior}</div>` : ''}${student.senior ? `<div>• SMA/SMK: ${student.senior}</div>` : ''}</div></div>` : ''}
+                    ${student.hobby ? `<div class="flex items-center"><i class="fas fa-heart text-pink-500 mr-3"></i><div><span class="font-medium text-gray-800">Hobi:</span><span class="text-gray-700 ml-2">${student.hobby}</span></div></div>` : ''}
+                    ${student.ambition ? `<div class="flex items-center"><i class="fas fa-star text-yellow-500 mr-3"></i><div><span class="font-medium text-gray-800">Cita-cita:</span><span class="text-gray-700 ml-2">${student.ambition}</span></div></div>` : ''}
+                    
+                    <div class="border-t pt-3 mt-3">
+                        ${student.fatherName ? `<div class="flex items-center"><i class="fas fa-user-tie text-gray-500 mr-3"></i><div><span class="font-medium text-gray-800">Nama Ayah:</span><span class="text-gray-700 ml-2">${student.fatherName}</span></div></div>` : ''}
+                        ${student.motherName ? `<div class="flex items-center mt-2"><i class="fas fa-female text-gray-500 mr-3"></i><div><span class="font-medium text-gray-800">Nama Ibu:</span><span class="text-gray-700 ml-2">${student.motherName}</span></div></div>` : ''}
+                        ${student.parentPhone ? `<div class="flex items-center mt-2"><i class="fab fa-whatsapp text-green-500 mr-3"></i><div><span class="font-medium text-gray-800">Kontak Ortu:</span><a href="https://wa.me/${student.parentPhone.replace(/[^0-9]/g, '')}" target="_blank" class="text-blue-600 hover:underline ml-2">${student.parentPhone}</a></div></div>` : ''}
+                    </div>
+
+                    <div class="border-t pt-3 mt-3">
+                        ${student.whatsapp ? `<div class="flex items-center"><i class="fab fa-whatsapp text-green-500 mr-3"></i><a href="https://wa.me/${student.whatsapp.replace(/[^0-9]/g, '')}" target="_blank" class="text-blue-600 hover:underline">${student.whatsapp}</a></div>` : ''}
+                        ${student.instagram ? `<div class="flex items-center mt-2"><i class="fab fa-instagram text-pink-500 mr-3"></i><a href="https://instagram.com/${student.instagram.replace('@', '')}" target="_blank" class="text-blue-600 hover:underline">${student.instagram}</a></div>` : ''}
+                        ${student.facebook ? `<div class="flex items-center mt-2"><i class="fab fa-facebook text-blue-600 mr-3"></i><a href="https://www.facebook.com/search/top/?q=${encodeURIComponent(student.facebook)}" target="_blank" class="text-blue-600 hover:underline">${student.facebook}</a></div>` : ''}
+                        ${student.tiktok ? `<div class="flex items-center mt-2"><i class="fab fa-tiktok text-black mr-3"></i><a href="https://tiktok.com/@${student.tiktok.replace('@', '')}" target="_blank" class="text-blue-600 hover:underline">${student.tiktok}</a></div>` : ''}
+                    </div>
+                </div>`;
+
+            actionButtons.innerHTML = ''; // Clear previous buttons
+            if (teacherModeActive) {
+                actionButtons.innerHTML += `<button onclick="viewMessages()" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 font-medium"><i class="fas fa-envelope-open-text mr-2"></i>Lihat Pesan Siswa</button>`;
+            } else {
+                actionButtons.innerHTML += `<button onclick="openMessageModal()" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 font-medium"><i class="fas fa-paper-plane mr-2"></i>Kirim Pesan ke Guru</button>`;
+            }
+            actionButtons.innerHTML += `<button onclick="editFromView()" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 font-medium"><i class="fas fa-edit mr-2"></i>Edit Kartu</button>`;
+
+            document.getElementById('viewModal').classList.remove('hidden');
+        };
+
+        window.openEditModal = function(student) {
+            document.getElementById('fullName').value = student.fullName || '';
+            document.getElementById('address').value = student.address || '';
+            document.getElementById('elementary').value = student.elementary || '';
+            document.getElementById('junior').value = student.junior || '';
+            document.getElementById('senior').value = student.senior || '';
+            document.getElementById('hobby').value = student.hobby || '';
+            document.getElementById('ambition').value = student.ambition || '';
+            document.getElementById('fatherName').value = student.fatherName || '';
+            document.getElementById('motherName').value = student.motherName || '';
+            document.getElementById('parentPhone').value = student.parentPhone || '';
+            document.getElementById('whatsapp').value = student.whatsapp || '';
+            document.getElementById('instagram').value = student.instagram || '';
+            document.getElementById('facebook').value = student.facebook || '';
+            document.getElementById('tiktok').value = student.tiktok || '';
+            
+            // Handle password fields visibility and text
+            const passwordHelpText = document.getElementById('password-help-text');
+            if (student.password) {
+                passwordHelpText.textContent = 'Kosongkan jika tidak ingin mengubah password.';
+            } else {
+                passwordHelpText.textContent = 'Password wajib diisi untuk melindungi kartumu.';
+            }
+            document.getElementById('password').value = '';
+            document.getElementById('confirmPassword').value = '';
+
+            const profileImg = document.getElementById('profileImage');
+            profileImg.src = student.photo || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjUwIiBjeT0iMzUiIHI9IjE1IiBmaWxsPSIjOUI5QkEzIi8+CjxwYXRoIGQ9Ik0yMCA4MEM0MCA2MCA2MCA2MCA4MCA4MEgyMFoiIGZpbGw9IiM5QjlCQTMiLz4KPC9zdmc+';
+            document.getElementById('studentModal').classList.remove('hidden');
+        };
+
+        window.editFromView = function() {
+            closeViewModal();
+            const student = students[currentStudentId] || {};
+            openEditModal(student);
+        };
+
+        window.closeModal = function() {
+            document.getElementById('studentModal').classList.add('hidden');
+            currentStudentId = null;
+        };
+
+        window.closeViewModal = function() {
+            document.getElementById('viewModal').classList.add('hidden');
+        };
+
+        function updateHeaderDisplay() {
+            document.getElementById('schoolNameDisplay').innerHTML = `🏫 ${appSettings.schoolName}`;
+            document.getElementById('schoolAddressDisplay').innerHTML = `<i class="fas fa-map-marker-alt mr-2"></i><span>${appSettings.schoolAddress}</span>`;
+            document.getElementById('schoolPhoneDisplay').innerHTML = `<i class="fas fa-phone mr-2"></i><span>${appSettings.schoolPhone}</span>`;
+            document.getElementById('schoolEmailDisplay').innerHTML = `<i class="fas fa-envelope mr-2"></i><span>${appSettings.schoolEmail}</span>`;
+            const teacherDisplay = document.getElementById('classTeacherDisplay');
+            if (appSettings.classTeacher && appSettings.classTeacher.trim() !== '') {
+                teacherDisplay.innerHTML = `<i class="fas fa-chalkboard-teacher mr-2"></i>Wali Kelas: ${appSettings.classTeacher}`;
+                teacherDisplay.style.display = 'block';
+            } else {
+                teacherDisplay.style.display = 'none';
+            }
+            document.getElementById('appTitleDisplay').innerHTML = `${appSettings.headerEmoji} ${appSettings.appTitle}`;
+            document.getElementById('classInfoDisplay').innerHTML = `${appSettings.className} - Tahun Ajaran ${appSettings.academicYear}`;
+            document.title = `${appSettings.appTitle} - ${appSettings.className}`;
+        }
+        
+        function updateLastUpdateDisplay() {
+            const display = document.getElementById('lastUpdateDisplay');
+            if (display) {
+                display.textContent = `Terakhir update: ${new Date().toLocaleTimeString('id-ID')}`;
+            }
+        }
+
+        // --- NEW PASSWORD & TEACHER MODE FUNCTIONS ---
+        
+        window.openPasswordModal = function() {
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('passwordModal').classList.remove('hidden');
+            document.getElementById('passwordInput').focus();
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.add('hidden');
+        }
+
+        window.cancelPasswordModal = function() {
+            closePasswordModal();
+            currentStudentId = null; // Reset only on explicit cancel
+        }
+
+        window.checkPassword = function() {
+            const enteredPassword = document.getElementById('passwordInput').value;
+            const student = students[currentStudentId];
+
+            if (student && student.password && enteredPassword === student.password) {
+                closePasswordModal();
+                if (student.fullName) {
+                    showStudentCard(student);
+                } else {
+                    openEditModal(student);
+                }
+            } else if (!student || !student.password) {
+                closePasswordModal();
+                openEditModal(student || {});
+            } else {
+                showToast('Password salah!', 'error');
+            }
+        }
+
+        window.closeMasterPasswordModal = function() {
+            document.getElementById('masterPasswordModal').classList.add('hidden');
+        }
+
+        window.checkMasterPassword = function() {
+            const enteredPassword = document.getElementById('masterPasswordInput').value;
+            if (enteredPassword === appSettings.masterPassword) {
+                teacherModeActive = true;
+                const btn = document.getElementById('teacherModeBtn');
+                const adminButtons = document.getElementById('adminButtons');
+                btn.classList.remove('bg-yellow-400/20', 'hover:bg-yellow-400/30');
+                btn.classList.add('bg-green-500/30', 'hover:bg-green-500/40');
+                btn.innerHTML = '<i class="fas fa-user-check mr-2"></i>Mode Guru Aktif';
+                adminButtons.classList.remove('hidden');
+                showToast('Mode Guru diaktifkan!', 'success');
+                closeMasterPasswordModal();
+            } else {
+                showToast('Password Master salah!', 'error');
+            }
+        }
+
+        const _internalOpenSettingsModal = function() {
+            document.getElementById('schoolName').value = appSettings.schoolName || '';
+            document.getElementById('schoolAddress').value = appSettings.schoolAddress || '';
+            document.getElementById('schoolPhone').value = appSettings.schoolPhone || '';
+            document.getElementById('schoolEmail').value = appSettings.schoolEmail || '';
+            document.getElementById('className').value = appSettings.className || '';
+            document.getElementById('academicYear').value = appSettings.academicYear || '';
+            document.getElementById('classTeacher').value = appSettings.classTeacher || '';
+            document.getElementById('appTitle').value = appSettings.appTitle || '';
+            document.getElementById('headerEmoji').value = appSettings.headerEmoji || '';
+            document.getElementById('studentCount').value = appSettings.studentCount || 36;
+            document.getElementById('masterPassword').value = ''; // Never show old password
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        window.openSettingsModal = function() {
+            if (!teacherModeActive) { 
+                showToast('Fitur ini hanya untuk guru.', 'error'); 
+                return; 
+            }
+            _internalOpenSettingsModal();
+        };
+
+        window.toggleTeacherMode = function() {
+            const adminButtons = document.getElementById('adminButtons');
+            if (teacherModeActive) {
+                teacherModeActive = false;
+                const btn = document.getElementById('teacherModeBtn');
+                btn.classList.remove('bg-green-500/30', 'hover:bg-green-500/40');
+                btn.classList.add('bg-yellow-400/20', 'hover:bg-yellow-400/30');
+                btn.innerHTML = '<i class="fas fa-user-shield mr-2"></i>Mode Guru';
+                adminButtons.classList.add('hidden');
+                showToast('Mode Guru dinonaktifkan.', 'info');
+                return;
+            }
+
+            // *** FIX: Allow setting master password for the first time ***
+            if (!appSettings.masterPassword || appSettings.masterPassword === '') {
+                showToast('Password Master belum diatur. Silakan atur sekarang.', 'info');
+                _internalOpenSettingsModal(); // Directly open settings if no master password is set
+                return;
+            }
+
+            // Instead of prompt, show the modal
+            document.getElementById('masterPasswordInput').value = '';
+            document.getElementById('masterPasswordModal').classList.remove('hidden');
+            document.getElementById('masterPasswordInput').focus();
+        }
+
+        // --- NEW MESSAGING FUNCTIONS ---
+        
+        window.openMessageModal = async function() {
+            const student = students[currentStudentId];
+            document.getElementById('messageModalTitle').textContent = `Pesan untuk ${student.fullName}`;
+            document.getElementById('messageInputArea').style.display = 'block'; // Always visible now
+            document.getElementById('messageModal').classList.remove('hidden');
+            
+            const messageList = document.getElementById('messageList');
+            messageList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat pesan...';
+            
+            const messagesRef = collection(db, `artifacts/${appId}/public/data/customers/${customerId}/students/${currentStudentId}/messages`);
+            const q = query(messagesRef, orderBy('timestamp', 'asc'));
+            
+            const querySnapshot = await getDocs(q);
+            messageList.innerHTML = '';
+            if (querySnapshot.empty) {
+                messageList.innerHTML = '<p class="text-gray-500 text-center">Belum ada pesan.</p>';
+            } else {
+                querySnapshot.forEach(doc => {
+                    const msg = doc.data();
+                    const isFromTeacher = msg.sender === 'teacher';
+                    const bubble = document.createElement('div');
+                    bubble.className = `message-bubble ${isFromTeacher ? 'bg-blue-500 text-white self-end' : 'bg-gray-200 text-gray-800 self-start'}`;
+                    bubble.textContent = msg.text;
+                    messageList.appendChild(bubble);
+                });
+            }
+
+            // Mark messages as read based on who is opening
+            if (teacherModeActive && student.hasUnreadMessage) {
+                markMessagesAsReadByTeacher();
+            } else if (!teacherModeActive && student.hasUnreadMessageFromTeacher) {
+                markMessagesAsReadByStudent();
+            }
+        }
+
+        window.closeMessageModal = function() {
+            document.getElementById('messageModal').classList.add('hidden');
+        }
+
+        window.sendMessage = async function() {
+            const messageText = document.getElementById('messageText').value;
+            if (!messageText.trim()) {
+                showToast('Pesan tidak boleh kosong.', 'error');
+                return;
+            }
+
+            const sender = teacherModeActive ? 'teacher' : 'student';
+            const messagesRef = collection(db, `artifacts/${appId}/public/data/customers/${customerId}/students/${currentStudentId}/messages`);
+            
+            try {
+                await addDoc(messagesRef, {
+                    text: messageText,
+                    sender: sender,
+                    timestamp: serverTimestamp()
+                });
+                
+                const studentDocRef = doc(studentsCollectionRef, currentStudentId.toString());
+                if (sender === 'student') {
+                    await setDoc(studentDocRef, { hasUnreadMessage: true }, { merge: true });
+                } else { // sender is teacher
+                    await setDoc(studentDocRef, { hasUnreadMessageFromTeacher: true }, { merge: true });
+                }
+
+                showToast('Pesan terkirim!', 'success');
+                document.getElementById('messageText').value = '';
+                closeMessageModal();
+            } catch (error) {
+                console.error("Error sending message:", error);
+                showToast('Gagal mengirim pesan.', 'error');
+            }
+        }
+        
+        window.viewMessages = function() {
+            closeViewModal();
+            openMessageModal();
+        }
+
+        async function markMessagesAsReadByTeacher() {
+            try {
+                const studentDocRef = doc(studentsCollectionRef, currentStudentId.toString());
+                await setDoc(studentDocRef, { hasUnreadMessage: false }, { merge: true });
+                console.log(`Messages for student ${currentStudentId} marked as read by teacher.`);
+            } catch (error) {
+                console.error("Error marking messages as read:", error);
+            }
+        }
+
+        async function markMessagesAsReadByStudent() {
+            try {
+                const studentDocRef = doc(studentsCollectionRef, currentStudentId.toString());
+                await setDoc(studentDocRef, { hasUnreadMessageFromTeacher: false }, { merge: true });
+                console.log(`Messages for student ${currentStudentId} marked as read by student.`);
+            } catch (error) {
+                console.error("Error marking messages as read:", error);
+            }
+        }
+
+        window.resetStudentData = async function() {
+            const confirmed = await showConfirm(
+                'Hapus Semua Data Siswa?',
+                'Tindakan ini akan menghapus semua data siswa secara permanen dan tidak bisa dibatalkan. Lanjutkan?'
+            );
+            if (!confirmed) return;
+
+            const btn = document.querySelector('button[onclick="resetStudentData()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Menghapus...';
+            btn.disabled = true;
+
+            try {
+                // Get all documents in the collection
+                const querySnapshot = await getDocs(studentsCollectionRef);
+                const deletePromises = [];
+                querySnapshot.forEach((doc) => {
+                    deletePromises.push(deleteDoc(doc.ref));
+                });
+
+                // Wait for all deletions to complete
+                await Promise.all(deletePromises);
+
+                // Clear local data and update UI
+                students = {};
+                localStorage.removeItem('studentsData');
+                initializeStudentGrid();
+
+                showToast('Semua data siswa berhasil dihapus.', 'success');
+                closeSettingsModal();
+
+            } catch (error) {
+                console.error("Error resetting student data:", error);
+                showToast('Gagal mereset data siswa.', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+    </script>
+</body>
+</html>
